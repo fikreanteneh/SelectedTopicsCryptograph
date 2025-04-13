@@ -4,18 +4,17 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import os
 
 # Generate RSA key pair
-private_key = rsa.generate_private_key(
-    public_exponent=65537,
-    key_size=2048
-)
+private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 public_key = private_key.public_key()
+
 
 # Export public key
 def get_public_key():
     return public_key.public_bytes(
         encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
     )
+
 
 # Decrypt session key using private key
 def decrypt_session_key(encrypted_session_key):
@@ -24,9 +23,10 @@ def decrypt_session_key(encrypted_session_key):
         padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
             algorithm=hashes.SHA256(),
-            label=None
-        )
+            label=None,
+        ),
     )
+
 
 # Encrypt message using session key
 def encrypt_message(message, session_key):
@@ -35,6 +35,7 @@ def encrypt_message(message, session_key):
     encryptor = cipher.encryptor()
     ciphertext = encryptor.update(message.encode()) + encryptor.finalize()
     return iv + ciphertext
+
 
 # Decrypt message using session key
 def decrypt_message(ciphertext, session_key):

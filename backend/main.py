@@ -1,40 +1,37 @@
+import base64
 from collections import defaultdict
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit, join_room
 from flask_cors import CORS
 
-# from key import get_public_key, decrypt_session_key, encrypt_message, decrypt_message
 import uuid
 from datetime import datetime
+
+from key import decrypt_session_key, get_public_key
 
 app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Store session keys for connected clients
-# session_keys = {}
 
-# @app.route('/')
-# def index():
-#     return render_template('chat.html')
-
-# @app.route('/get-public-key', methods=['GET'])
-# def get_public_key_route():
-#     """Send the server's public key to the client."""
-#     return jsonify({"public_key": get_public_key().decode()})
-
-# @socketio.on('exchange_key')
-# def handle_key_exchange(data):
-#     """Receive the encrypted session key from the client."""
-#     encrypted_session_key = base64.b64decode(data['encrypted_session_key'])
-#     session_key = decrypt_session_key(encrypted_session_key)
-#     session_keys[request.sid] = session_key
-#     emit('key_exchange_success', {"message": "Session key established!"})
-
-
+session_keys = {}  # Store session keys for connected clients
 user_handles = defaultdict(dict)  # { room_id: {sid: handle_name}, 'room' }
-
 chat_rooms = defaultdict(dict)
+
+
+@app.route("/get-public-key", methods=["GET"])
+def get_public_key_route():
+    """Send the server's public key to the client."""
+    return jsonify({"public_key": get_public_key()})
+
+
+@socketio.on("exchange-key")
+def handle_key_exchange(data):
+    """Receive the encrypted session key from the client."""
+    encrypted_session_key = base64.b64decode(data["encrypted_session_key"])
+    session_key = decrypt_session_key(encrypted_session_key)
+    session_keys[request.sid] = session_key
+    emit("key_exchange_success", {"message": "Session key established!"})
 
 
 @socketio.on("create")
