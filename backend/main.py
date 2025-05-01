@@ -1,5 +1,6 @@
 import base64
 from collections import defaultdict
+from functools import wraps
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit, join_room
 from flask_cors import CORS
@@ -7,7 +8,12 @@ from flask_cors import CORS
 import uuid
 from datetime import datetime
 
-from key import decrypt_session_key, get_public_key
+from security import (
+    decrypt_json,
+    decrypt_session_key,
+    encrypt_json,
+    get_public_key,
+)
 
 app = Flask(__name__)
 CORS(app)
@@ -19,22 +25,49 @@ user_handles = defaultdict(dict)  # { room_id: {sid: handle_name}, 'room' }
 chat_rooms = defaultdict(dict)
 
 
-@app.route("/get-public-key", methods=["GET"])
+def decrypt_middleware(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        session_key = session_keys.get(request.sid)
+        if not session_key:
+            emit("error", {"message": "Session key not established!"})
+            return
+
+        # Decrypt the incoming data
+        try:
+            decrypted_data = decrypt_json(args[0], session_key)
+        except Exception as e:
+            emit("error", {"message": "Failed to decrypt data!", "error": str(e)})
+            return
+
+        # Pass the decrypted data to the wrapped function
+        return func(decrypted_data, *args[1:], **kwargs)
+
+    return wrapper
+
+
+@app.route("/getPublicKey", methods=["GET"])
 def get_public_key_route():
     """Send the server's public key to the client."""
-    return jsonify({"public_key": get_public_key()})
+    public_key = get_public_key()  # Assuming this returns a bytes object
+    public_key_str = public_key.decode("utf-8")  # Decode bytes to a UTF-8 string
+    return jsonify({"publicKey": public_key_str})
 
 
-@socketio.on("exchange-key")
+@socketio.on("exchangeKey")
 def handle_key_exchange(data):
     """Receive the encrypted session key from the client."""
-    encrypted_session_key = base64.b64decode(data["encrypted_session_key"])
-    session_key = decrypt_session_key(encrypted_session_key)
+    session_key = decrypt_session_key(data)
     session_keys[request.sid] = session_key
-    emit("key_exchange_success", {"message": "Session key established!"})
+    encrypted_message = encrypt_json(
+        {"success": True, "message": "Session key established!"},
+        session_key,
+    )
+    emit("exchangeKeySuccess", encrypted_message, to=request.sid)
 
 
 @socketio.on("create")
+@decrypt_middleware
 def handle_create_chat(data):
     """Handle creating a new chat room."""
     handle_name = data["handle"]
@@ -44,40 +77,45 @@ def handle_create_chat(data):
     chat_rooms[new_room] = {
         "roomName": room_name,
         "createdAt": datetime.now().isoformat(),
-        "memberCount": 0,
-        "members": [],
+        "joinedAt": datetime.now().isoformat(),
+        "memberCount": 1,
+        "members": [handle_name],
     }
+
     join_room(new_room)
-    emit(
-        "chatCreated",
+
+    encrypted_message = encrypt_json(
         {
             "success": True,
             "roomId": new_room,
             "roomName": room_name,
             "handle": handle_name,
             "createdAt": chat_rooms[new_room]["createdAt"],
-            "joinedAt": chat_rooms[new_room]["createdAt"],
+            "joinedAt": chat_rooms[new_room]["joinedAt"],
             "memberCount": chat_rooms[new_room]["memberCount"],
             "members": chat_rooms[new_room]["members"],
         },
-        room=new_room,
+        session_keys[request.sid],
     )
+    emit("chatCreated", encrypted_message, to=request.sid)
 
 
 @socketio.on("join")
+@decrypt_middleware
 def handle_join_chat(data):
     """Handle joining an existing chat room."""
     room_id = data["roomId"]
     handle_name = data["handle"]
 
     if room_id not in chat_rooms:
-        emit(
-            "chatJoined",
+        encrypted_message = encrypt_json(
             {
                 "success": False,
                 "message": "Room does not exist.",
             },
+            session_keys[request.sid],
         )
+        emit("error", encrypted_message)
         return
 
     user_handles[room_id][request.sid] = handle_name
@@ -85,8 +123,7 @@ def handle_join_chat(data):
     chat_rooms[room_id]["members"].append(handle_name)
 
     join_room(room_id)
-    emit(
-        "chatJoined",
+    join_detail = encrypt_json(
         {
             "success": True,
             "roomId": room_id,
@@ -97,44 +134,47 @@ def handle_join_chat(data):
             "memberCount": chat_rooms[room_id]["memberCount"],
             "members": chat_rooms[room_id]["members"],
         },
+        session_keys[request.sid],
     )
-    emit(
-        "receiveMessage",
-        {
-            "message": f"{handle_name} joined the chat successfully!",
-            "sender": "System",
-            "roomId": room_id,
-        },
-        room=room_id,
-        include_self=False,
-    )
+
+    emit("chatJoined", join_detail, to=request.sid)
+
+    join_notification = {
+        "message": f"{handle_name} joined the chat successfully!",
+        "sender": "System",
+        "roomId": room_id,
+        "createdAt": datetime.now().isoformat(),
+    }
+
+    for sid in user_handles[room_id].keys():
+        if sid == request.sid:
+            continue
+        encrypted_message = encrypt_json(join_notification, session_keys[sid])
+        emit("receiveMessage", encrypted_message, to=sid)
 
 
 @socketio.on("send")
+@decrypt_middleware
 def handle_send_message(data):
     """Handle incoming encrypted messages."""
-    # session_key = session_keys.get(request.sid)
-    # if not session_key:
-    #     emit('error', {"message": "Session key not established!"})
-    #     return
     room = data["roomId"]
     message = data["message"]
     handle_name = user_handles[room][request.sid]
-    # encrypted_message = base64.b64decode(data['message'])
-    # decrypted_message = decrypt_message(encrypted_message, session_key).decode()
 
-    # print(f"Decrypted message from client in room '{room}': {decrypted_message}")
+    json_message = {
+        "message": message,
+        "sender": handle_name,
+        "roomId": room,
+        "createdAt": datetime.now().isoformat(),
+    }
 
-    # Encrypt the response and send it back to the room
-    # response_message = f"Server received: {decrypted_message}"
-    # encrypted_response = encrypt_message(response_message, session_key)
-
-    emit(
-        "receiveMessage",
-        {"message": message, "sender": handle_name, "roomId": room},
-        room=room,
-        include_self=False,
-    )
+    # TODO: Create session key for the gruop instead of the user
+    for sid in user_handles[room].keys():
+        encrypted_message = encrypt_json(
+            json_message,
+            session_keys[sid],
+        )
+        emit("receiveMessage", encrypted_message, to=sid)
 
 
 if __name__ == "__main__":
