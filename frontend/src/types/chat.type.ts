@@ -48,3 +48,7 @@ export type Chat = {
   createdAt: Date;
   joinedAt: Date;
 };
+
+export type ChatError = {
+  message: string;
+};
