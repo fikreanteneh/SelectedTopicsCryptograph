@@ -109,10 +109,7 @@ def handle_join_chat(data):
 
     if room_id not in chat_rooms:
         encrypted_message = encrypt_json(
-            {
-                "success": False,
-                "message": "Room does not exist.",
-            },
+            {"message": "Room does not exist."},
             session_keys[request.sid],
         )
         emit("error", encrypted_message)

@@ -9,6 +9,7 @@ import { io, Socket } from 'socket.io-client';
 import {
   Chat,
   ChatCreate,
+  ChatError,
   ChatEvent,
   ChatJoin,
   MessageReceived,
@@ -164,14 +165,17 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
           sessionKey,
         );
 
+        const chatErrorHandler = jsonReceiveHandler<ChatError>((data) => {
+          alert(data.message);
+        }, sessionKey);
+
         // Register socket event handlers
         socket.on('chatCreated', chatCreatedHandler);
         socket.on('chatJoined', chatJoinedHandler);
         socket.on('receiveMessage', chatReceivedHandler);
-
-        // Handle error messages (TODO: Add proper error handling)
+        socket.on('error', chatErrorHandler);
       } catch (error) {
-        console.error('Error initializing socket:', error);
+        alert(error);
       }
     };
 
