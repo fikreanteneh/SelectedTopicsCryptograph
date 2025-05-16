@@ -1,22 +1,36 @@
-export type ChatCreate = {
+//API Types
+export type ChatMember = {
+  handle: string;
+  sid: string;
+  joinedAt: Date;
+};
+
+export type ChatCreateReq = {
   roomName: string;
   handle: string;
 };
 
-export type ChatJoin = {
+export interface ChatCreateRes {
+  roomId: string;
+  roomName: string;
+  handle: string;
+  createdAt: Date;
+  memberCount: number;
+  members: ChatMember[];
+}
+
+export type ChatJoinReq = {
   roomId: string;
   handle: string;
 };
 
-export interface ChatEvent {
-  success: boolean;
+export interface ChatJoinRes {
   roomId: string;
   roomName: string;
   handle: string;
   createdAt: string;
-  joinedAt: string;
   memberCount: number;
-  members: string[];
+  members: ChatMember[];
 }
 
 export type SendMessage = {
@@ -28,9 +42,10 @@ export type MessageReceived = {
   sender: string;
   message: string;
   roomId: string;
-  createdAt: string;
+  createdAt: Date;
 };
 
+//Local Types
 export type Message = {
   sender: string;
   message: string;
@@ -44,9 +59,8 @@ export type Chat = {
   handle: string;
   messages: Message[];
   memberCount: number;
-  members: string[];
+  members: ChatMember[];
   createdAt: Date;
-  joinedAt: Date;
 };
 
 export type ChatError = {

@@ -2,11 +2,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import useChat from '@/context/ChatProvider';
 import { useState } from 'react';
+import { Navigate, useParams } from 'react-router-dom';
 
 const ChatDetail = () => {
-  const { chatsMap, selectedChat, sendMessage } = useChat();
+  const { chatId: selectedChat } = useParams();
+  const { chatsMap, sendMessage } = useChat();
   const [message, setMessage] = useState('');
-  if (!selectedChat) return null;
+
+  if (!selectedChat || !(selectedChat in chatsMap)) {
+    return <Navigate to={'/'} />;
+  }
+
   const chat = chatsMap[selectedChat];
 
   const handleSendMessage = () => {

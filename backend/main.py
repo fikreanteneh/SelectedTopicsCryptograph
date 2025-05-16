@@ -36,12 +36,11 @@ def decrypt_middleware(func):
         # Decrypt the incoming data
         try:
             decrypted_data = decrypt_json(args[0], session_key)
+            # Pass the decrypted data to the wrapped function
+            return func(decrypted_data, *args[1:], **kwargs)
         except Exception as e:
             emit("error", {"message": "Failed to decrypt data!", "error": str(e)})
             return
-
-        # Pass the decrypted data to the wrapped function
-        return func(decrypted_data, *args[1:], **kwargs)
 
     return wrapper
 
@@ -74,24 +73,24 @@ def handle_create_chat(data):
     room_name = data["roomName"]
     new_room = str(uuid.uuid4())
     user_handles[new_room][request.sid] = handle_name
+    created_at = datetime.now().isoformat()
     chat_rooms[new_room] = {
         "roomName": room_name,
-        "createdAt": datetime.now().isoformat(),
-        "joinedAt": datetime.now().isoformat(),
+        "createdAt": created_at,
         "memberCount": 1,
-        "members": [handle_name],
+        "members": [
+            {"handle": handle_name, "sid": request.sid, "joinedAt": created_at}
+        ],
     }
 
     join_room(new_room)
 
     encrypted_message = encrypt_json(
         {
-            "success": True,
             "roomId": new_room,
             "roomName": room_name,
             "handle": handle_name,
             "createdAt": chat_rooms[new_room]["createdAt"],
-            "joinedAt": chat_rooms[new_room]["joinedAt"],
             "memberCount": chat_rooms[new_room]["memberCount"],
             "members": chat_rooms[new_room]["members"],
         },
@@ -117,37 +116,36 @@ def handle_join_chat(data):
 
     user_handles[room_id][request.sid] = handle_name
     chat_rooms[room_id]["memberCount"] += 1
-    chat_rooms[room_id]["members"].append(handle_name)
-
-    join_room(room_id)
-    join_detail = encrypt_json(
+    chat_rooms[room_id]["members"].append(
         {
-            "success": True,
-            "roomId": room_id,
-            "roomName": chat_rooms[room_id]["roomName"],
             "handle": handle_name,
-            "createdAt": chat_rooms[room_id]["createdAt"],
+            "sid": request.sid,
             "joinedAt": datetime.now().isoformat(),
-            "memberCount": chat_rooms[room_id]["memberCount"],
-            "members": chat_rooms[room_id]["members"],
-        },
-        session_keys[request.sid],
+        }
     )
 
-    emit("chatJoined", join_detail, to=request.sid)
-
-    join_notification = {
-        "message": f"{handle_name} joined the chat successfully!",
-        "sender": "System",
+    join_room(room_id)
+    join_detail = {
         "roomId": room_id,
-        "createdAt": datetime.now().isoformat(),
+        "roomName": chat_rooms[room_id]["roomName"],
+        "handle": handle_name,
+        "createdAt": chat_rooms[room_id]["createdAt"],
+        "memberCount": chat_rooms[room_id]["memberCount"],
+        "members": chat_rooms[room_id]["members"],
     }
 
-    for sid in user_handles[room_id].keys():
+    emit(
+        "chatJoined",
+        encrypt_json(join_detail, session_keys[request.sid]),
+        to=request.sid,
+    )
+
+    for user in chat_rooms[room_id]["members"]:
+        sid = user["sid"]
         if sid == request.sid:
             continue
-        encrypted_message = encrypt_json(join_notification, session_keys[sid])
-        emit("receiveMessage", encrypted_message, to=sid)
+        encrypted_message = encrypt_json(join_detail, session_keys[sid])
+        emit("someoneJoined", encrypted_message, to=sid)
 
 
 @socketio.on("send")
@@ -165,13 +163,14 @@ def handle_send_message(data):
         "createdAt": datetime.now().isoformat(),
     }
 
-    # TODO: Create session key for the gruop instead of the user
-    for sid in user_handles[room].keys():
+    # TODO: Create session key for the group instead of the user
+    for user in chat_rooms[room]["members"]:
+        sid = user["sid"]
         encrypted_message = encrypt_json(
             json_message,
             session_keys[sid],
         )
-        emit("receiveMessage", encrypted_message, to=sid)
+        emit("receiveMessage", encrypted_message, to=user["sid"])
 
 
 if __name__ == "__main__":

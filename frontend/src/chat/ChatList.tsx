@@ -1,17 +1,13 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import useChat from '../context/ChatProvider';
 
-const NavBar = () => {
-  const {
-    createChat,
-    joinChat,
-    chatsList,
-    chatsMap,
-    setSelectedChat,
-    selectedChat,
-  } = useChat();
+const ChatList = () => {
+  const { createChat, joinChat, chatsList, chatsMap } = useChat();
+
+  const navigate = useNavigate();
 
   const [createChatInput, setCreateChatInput] = useState<string>('');
   const [joinChatInput, setJoinChatInput] = useState<string>('');
@@ -79,7 +75,7 @@ const NavBar = () => {
   ];
 
   return (
-    <>
+    <div className="flex h-screen">
       <div className="flex flex-col h-screen border bg-muted border-muted w-96">
         <div>
           <div className="space-y-1">
@@ -110,7 +106,7 @@ const NavBar = () => {
               <li
                 key={chat.roomId}
                 className="flex items-center justify-between p-2 border-b cursor-pointer border-muted"
-                onClick={() => setSelectedChat(chat.roomId)}
+                onClick={() => navigate(`./${chat.roomId}`)}
               >
                 <span>{chat.roomName}</span>
                 {unreadCount > 0 && (
@@ -157,8 +153,8 @@ const NavBar = () => {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 
-export default NavBar;
+export default ChatList;
