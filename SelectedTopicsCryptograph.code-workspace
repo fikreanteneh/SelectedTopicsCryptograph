@@ -7,5 +7,13 @@
 		"path": "frontend"
 	}
 ],
-  "settings": {}
+"settings": {
+	"cSpell.words": [
+		"ciphertext",
+		"decryptor",
+		"encryptor",
+		"jsonify",
+		"urandom"
+	]
+}
 }
