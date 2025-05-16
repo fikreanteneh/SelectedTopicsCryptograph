@@ -21,19 +21,21 @@ export interface ChatEvent {
 
 export type SendMessage = {
   roomId: string;
-  messages: string;
+  message: string;
 };
 
 export type MessageReceived = {
   sender: string;
-  messages: string;
+  message: string;
   roomId: string;
+  createdAt: string;
 };
 
 export type Message = {
   sender: string;
   message: string;
   seen: boolean;
+  createdAt: Date;
 };
 
 export type Chat = {
@@ -45,4 +47,8 @@ export type Chat = {
   members: string[];
   createdAt: Date;
   joinedAt: Date;
+};
+
+export type ChatError = {
+  message: string;
 };
