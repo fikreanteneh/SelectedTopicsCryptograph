@@ -6,6 +6,7 @@ import {
 } from '@/lib/cryptography';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import toast, { Toaster } from 'react-hot-toast';
 import {
   Chat,
   ChatCreateReq,
@@ -111,7 +112,7 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
 
         // Handle chat creation
         const chatCreatedHandler = jsonReceiveHandler<ChatCreateRes>((data) => {
-          //TODO: Toast Notification
+          toast.success(`Chat "${data.roomName}" created successfully!`);
           chatsMap[data.roomId] = {
             roomId: data.roomId,
             roomName: data.roomName,
@@ -127,7 +128,7 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
 
         // Handle chat joining
         const chatJoinedHandler = jsonReceiveHandler<ChatJoinRes>((data) => {
-          //TODO: Toast Notification
+          toast.success(`Joined chat "${data.roomName}"!`);
           chatsMap[data.roomId] = {
             roomId: data.roomId,
             roomName: data.roomName,
@@ -144,7 +145,11 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
         // Handle receiving messages
         const chatReceivedHandler = jsonReceiveHandler<MessageReceived>(
           (data) => {
-            //TODO: Toast Notification
+            if (selectedChat !== data.roomId) {
+              toast(`New message from ${data.senderHandle}`, {
+                icon: '💬',
+              });
+            }
             setMapList((prevChatsMap) => {
               const chat = prevChatsMap[data.roomId];
               if (chat) {
@@ -172,7 +177,9 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
         );
 
         const someoneJoinedHandler = jsonReceiveHandler<ChatJoinRes>((data) => {
-          //TODO: Toast Notification
+          toast(`${data.handle} joined the chat!`, {
+            icon: '👋',
+          });
           setMapList((prevChatsMap) => {
             const chat = prevChatsMap[data.roomId];
             if (chat) {
@@ -190,12 +197,17 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
         }, sessionKey);
 
         const chatErrorHandler = jsonReceiveHandler<ChatError>((data) => {
-          //TODO: Toast Notification instead of alert
-          alert(data.message);
+          toast.error(data.message);
         }, sessionKey);
 
         const someoneLeftHandler = jsonReceiveHandler<LeaveChat>((data) => {
-          //TODO: Toast Notification
+          const chat = chatsMap[data.roomId];
+          const leavingUser = chat?.members.find(member => member.sid === data.userId);
+          if (leavingUser) {
+            toast(`${leavingUser.handle} left the chat`, {
+              icon: '👋',
+            });
+          }
           setMapList((prevChatsMap) => {
             const chat = prevChatsMap[data.roomId];
             if (chat) {
@@ -222,7 +234,7 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
         socket.on('someoneLeft', someoneLeftHandler);
         socket.on('error', chatErrorHandler);
       } catch (error) {
-        alert(error);
+        toast.error(`Connection error: ${error}`);
       }
     };
 
@@ -241,7 +253,7 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
 
   const joinChat = async (joinChat: ChatJoinReq) => {
     if (joinChat.roomId in chatsMap) {
-      alert('You are already in this chat');
+      toast.error('You are already in this chat');
       return;
     }
     socket?.emit('join', await encryptJson(joinChat, sessionKey!));
@@ -259,6 +271,7 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
         setSelectedChat,
       }}
     >
+      <Toaster position="top-right" />
       {children}
     </ChatContext.Provider>
   ) : null;
