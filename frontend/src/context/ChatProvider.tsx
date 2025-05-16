@@ -8,10 +8,11 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import {
   Chat,
-  ChatCreate,
+  ChatCreateReq,
+  ChatCreateRes,
   ChatError,
-  ChatEvent,
-  ChatJoin,
+  ChatJoinReq,
+  ChatJoinRes,
   MessageReceived,
   SendMessage,
 } from '../types/chat.type';
@@ -27,8 +28,8 @@ const ChatContext = createContext<ChatContextType>({
 });
 
 type ChatContextType = {
-  createChat: (createChat: ChatCreate) => void;
-  joinChat: (joinChat: ChatJoin) => void;
+  createChat: (createChat: ChatCreateReq) => void;
+  joinChat: (joinChat: ChatJoinReq) => void;
   sendMessage: (message: SendMessage) => void;
   chatsList: string[];
   chatsMap: Record<string, Chat>;
@@ -103,14 +104,14 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
         });
 
         // Handle chat creation
-        const chatCreatedHandler = jsonReceiveHandler<ChatEvent>((data) => {
+        const chatCreatedHandler = jsonReceiveHandler<ChatCreateRes>((data) => {
+          //TODO: Toast Notification
           chatsMap[data.roomId] = {
             roomId: data.roomId,
             roomName: data.roomName,
-            joinedAt: new Date(),
             handle: data.handle,
             messages: [],
-            createdAt: new Date(data.createdAt),
+            createdAt: data.createdAt,
             memberCount: data.memberCount,
             members: data.members,
           };
@@ -118,11 +119,11 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
         }, sessionKey);
 
         // Handle chat joining
-        const chatJoinedHandler = jsonReceiveHandler<ChatEvent>((data) => {
+        const chatJoinedHandler = jsonReceiveHandler<ChatJoinRes>((data) => {
+          //TODO: Toast Notification
           chatsMap[data.roomId] = {
             roomId: data.roomId,
             roomName: data.roomName,
-            joinedAt: new Date(data.joinedAt),
             handle: data.handle,
             messages: [],
             createdAt: new Date(data.createdAt),
@@ -135,37 +136,52 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
         // Handle receiving messages
         const chatReceivedHandler = jsonReceiveHandler<MessageReceived>(
           (data) => {
+            //TODO: Toast Notification
             setMapList((prevChatsMap) => {
               const chat = prevChatsMap[data.roomId];
               if (chat) {
-                // Update the chat's messages
-                const updatedChat = {
-                  ...chat,
-                  messages: [
-                    ...chat.messages,
-                    {
-                      sender: data.sender,
-                      message: data.message,
-                      createdAt: new Date(data.createdAt), // Fix the typo here
-                      seen: false,
-                    },
-                  ],
-                };
-
-                // Return the updated chats map
                 return {
                   ...prevChatsMap,
-                  [data.roomId]: updatedChat,
+                  [data.roomId]: {
+                    ...chat,
+                    messages: [
+                      ...chat.messages,
+                      {
+                        sender: data.sender,
+                        message: data.message,
+                        createdAt: data.createdAt,
+                        seen: false,
+                      },
+                    ],
+                  },
                 };
               }
-              // If the chat doesn't exist, return the previous state
               return prevChatsMap;
             });
           },
           sessionKey,
         );
 
+        const someoneJoinedHandler = jsonReceiveHandler<ChatJoinRes>((data) => {
+          //TODO: Toast Notification
+          setMapList((prevChatsMap) => {
+            const chat = prevChatsMap[data.roomId];
+            if (chat) {
+              return {
+                ...prevChatsMap,
+                [data.roomId]: {
+                  ...chat,
+                  members: data.members,
+                  memberCount: data.memberCount,
+                },
+              };
+            }
+            return prevChatsMap;
+          });
+        }, sessionKey);
+
         const chatErrorHandler = jsonReceiveHandler<ChatError>((data) => {
+          //TODO: Toast Notification instead of alert
           alert(data.message);
         }, sessionKey);
 
@@ -173,6 +189,7 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
         socket.on('chatCreated', chatCreatedHandler);
         socket.on('chatJoined', chatJoinedHandler);
         socket.on('receiveMessage', chatReceivedHandler);
+        socket.on('someoneJoined', someoneJoinedHandler);
         socket.on('error', chatErrorHandler);
       } catch (error) {
         alert(error);
@@ -189,10 +206,10 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
   const sendMessage = async (message: SendMessage) =>
     socket?.emit('send', await encryptJson(message, sessionKey!));
 
-  const createChat = async (createChat: ChatCreate) =>
+  const createChat = async (createChat: ChatCreateReq) =>
     socket?.emit('create', await encryptJson(createChat, sessionKey!));
 
-  const joinChat = async (joinChat: ChatJoin) =>
+  const joinChat = async (joinChat: ChatJoinReq) =>
     socket?.emit('join', await encryptJson(joinChat, sessionKey!));
 
   return socket && sessionKey ? (

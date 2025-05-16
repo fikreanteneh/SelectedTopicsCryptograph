@@ -1,7 +1,11 @@
-import Home from './chat/Home';
+import ChatDetail from './chat/ChatDetail';
+import ChatList from './chat/ChatList';
 import ThemeSwitcher from './components/ThemeSwitcher';
 import Particles from './components/ui/particles';
+import { ChatProvider } from './context/ChatProvider';
 import { ThemeProvider } from './context/ThemeProvider';
+
+import { BrowserRouter, Outlet, Route, Routes } from 'react-router-dom';
 
 const Layout = () => {
   return (
@@ -23,7 +27,7 @@ const Layout = () => {
                 <Ripple />
             </div> */}
       <div className="z-[2]">
-        <Home />
+        <Outlet />
       </div>
     </div>
   );
@@ -32,8 +36,17 @@ const Layout = () => {
 function App() {
   return (
     <ThemeProvider>
-      <ThemeSwitcher />
-      <Layout />
+      <ChatProvider>
+        <ThemeSwitcher />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<ChatList />} />
+              <Route path=":chatId" element={<ChatDetail />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </ChatProvider>
     </ThemeProvider>
   );
 }
