@@ -51,7 +51,7 @@ def decrypt_message(encrypted_data, session_key):
 
     decryptor = Cipher(
         algorithms.AES(session_key),
-        modes.GCM(iv, tag),  # Pass the IV and tag
+        modes.GCM(iv, tag),
     ).decryptor()
 
     return decryptor.update(ciphertext) + decryptor.finalize()  # Return decrypted bytes

@@ -49,8 +49,8 @@ def decrypt_middleware(func):
 @app.route("/getPublicKey", methods=["GET"])
 def get_public_key_route():
     """Send the server's public key to the client."""
-    public_key = get_public_key()  # Assuming this returns a bytes object
-    public_key_str = public_key.decode("utf-8")  # Decode bytes to a UTF-8 string
+    public_key = get_public_key()
+    public_key_str = public_key.decode("utf-8")
     return jsonify({"publicKey": public_key_str})
 
 
