@@ -2,14 +2,53 @@
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from os import urandom
+from os import urandom, path
+import os
 
 from flask import json
 
-# Generate RSA key pair
-private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-public_key = private_key.public_key()
+# Key file paths
+PRIVATE_KEY_PATH = "private_key.pem"
+PUBLIC_KEY_PATH = "public_key.pem"
 
+def load_or_generate_keys():
+    global private_key, public_key
+    
+    # Check if keys exist
+    if path.exists(PRIVATE_KEY_PATH) and path.exists(PUBLIC_KEY_PATH):
+        # Load existing keys
+        with open(PRIVATE_KEY_PATH, "rb") as f:
+            private_key = serialization.load_pem_private_key(
+                f.read(),
+                password=None
+            )
+        with open(PUBLIC_KEY_PATH, "rb") as f:
+            public_key = serialization.load_pem_public_key(
+                f.read()
+            )
+    else:
+        # Generate new keys
+        private_key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=2048
+        )
+        public_key = private_key.public_key()
+        
+        # Save keys
+        with open(PRIVATE_KEY_PATH, "wb") as f:
+            f.write(private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
+            ))
+        with open(PUBLIC_KEY_PATH, "wb") as f:
+            f.write(public_key.public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo
+            ))
+
+# Initialize keys
+load_or_generate_keys()
 
 # Export public key
 def get_public_key():
