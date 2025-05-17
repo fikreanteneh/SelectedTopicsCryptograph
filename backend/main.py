@@ -175,3 +175,6 @@ def handle_send_message(data):
 
 if __name__ == "__main__":
     socketio.run(app, port=4433)
+
+# Generate a self-signed certificate for testing purposes
+# openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes
