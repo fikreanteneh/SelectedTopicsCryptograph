@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import useChat from '../context/ChatProvider';
+import ChatListSkeleton from '../components/ChatListSkeleton';
 
 const ChatList = () => {
-  const { createChat, joinChat, chatsList, chatsMap } = useChat();
+  const { createChat, joinChat, chatsList, chatsMap, isLoading } = useChat();
 
   const navigate = useNavigate();
 
@@ -73,6 +74,10 @@ const ChatList = () => {
       },
     },
   ];
+
+  if (isLoading) {
+    return <ChatListSkeleton />;
+  }
 
   return (
     <div className="flex h-screen p-2">

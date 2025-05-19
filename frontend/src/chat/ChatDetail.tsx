@@ -3,12 +3,17 @@ import { Input } from '@/components/ui/input';
 import useChat from '@/context/ChatProvider';
 import { useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
+import ChatDetailSkeleton from '@/components/ChatDetailSkeleton';
 
 const ChatDetail = () => {
   const { chatId: selectedChat } = useParams();
-  const { chatsMap, sendMessage } = useChat();
+  const { chatsMap, sendMessage, isLoading } = useChat();
   const [message, setMessage] = useState('');
   const [copied, setCopied] = useState(false);
+
+  if (isLoading) {
+    return <ChatDetailSkeleton />;
+  }
 
   if (!selectedChat || !(selectedChat in chatsMap)) {
     return <Navigate to={'/'} />;

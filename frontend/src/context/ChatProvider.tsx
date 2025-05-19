@@ -27,6 +27,7 @@ const ChatContext = createContext<ChatContextType>({
   chatsMap: {},
   selectedChat: null,
   setSelectedChat: () => {},
+  isLoading: true,
 });
 
 type ChatContextType = {
@@ -37,6 +38,7 @@ type ChatContextType = {
   chatsMap: Record<string, Chat>;
   selectedChat: string | null;
   setSelectedChat: (chatId: string | null) => void;
+  isLoading: boolean;
 };
 
 const useChat = () => {
@@ -51,6 +53,7 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
   const [chatsMap, setMapList] = useState<Record<string, Chat>>({});
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [sessionKey, setSessionKey] = useState<CryptoKey | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   function jsonReceiveHandler<T>(
     handler: (data: T) => void,
@@ -76,6 +79,7 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
   useEffect(() => {
     const initializeSocket = async () => {
       try {
+        setIsLoading(true);
         // Fetch the server's public key
         const res = await fetch(`${import.meta.env.VITE_API_URL}/getPublicKey`);
         const { publicKey }: { publicKey: string } = await res.json();
@@ -107,7 +111,8 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
 
         socket.on('exchangeKeySuccess', () => {
           console.log('Session key exchange successful!');
-          setSocket(socket); // Save the socket instance
+          setSocket(socket);
+          setIsLoading(false);
         });
 
         // Handle chat creation
@@ -235,6 +240,7 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
         socket.on('error', chatErrorHandler);
       } catch (error) {
         toast.error(`Connection error: ${error}`);
+        setIsLoading(false);
       }
     };
 
@@ -264,11 +270,12 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
       value={{
         createChat,
         joinChat,
-        chatsList: chatsList,
         sendMessage,
+        chatsList: chatsList,
         chatsMap: chatsMap,
         selectedChat,
         setSelectedChat,
+        isLoading,
       }}
     >
       <Toaster position="top-right" />
