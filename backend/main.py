@@ -72,7 +72,6 @@ def handle_create_chat(data):
     handle_name = data["handle"]
     room_name = data["roomName"]
     new_room = str(uuid.uuid4())
-    user_handles[new_room][request.sid] = handle_name
     created_at = datetime.now().isoformat()
     chat_rooms[new_room] = {
         "roomName": room_name,
@@ -82,7 +81,7 @@ def handle_create_chat(data):
             {"handle": handle_name, "sid": request.sid, "joinedAt": created_at}
         ],
     }
-
+    user_handles[request.sid] = {"handle": handle_name, "rooms": [new_room]}
     join_room(new_room)
 
     encrypted_message = encrypt_json(
@@ -90,6 +89,7 @@ def handle_create_chat(data):
             "roomId": new_room,
             "roomName": room_name,
             "handle": handle_name,
+            "userId": request.sid,
             "createdAt": chat_rooms[new_room]["createdAt"],
             "memberCount": chat_rooms[new_room]["memberCount"],
             "members": chat_rooms[new_room]["members"],
@@ -114,7 +114,12 @@ def handle_join_chat(data):
         emit("error", encrypted_message)
         return
 
-    user_handles[room_id][request.sid] = handle_name
+    if request.sid not in user_handles:
+        user_handles[request.sid] = {"handle": handle_name, "rooms": [room_id]}
+    else:
+        if room_id not in user_handles[request.sid]["rooms"]:
+            user_handles[request.sid]["rooms"].append(room_id)
+
     chat_rooms[room_id]["memberCount"] += 1
     chat_rooms[room_id]["members"].append(
         {
@@ -129,6 +134,7 @@ def handle_join_chat(data):
         "roomId": room_id,
         "roomName": chat_rooms[room_id]["roomName"],
         "handle": handle_name,
+        "userId": request.sid,
         "createdAt": chat_rooms[room_id]["createdAt"],
         "memberCount": chat_rooms[room_id]["memberCount"],
         "members": chat_rooms[room_id]["members"],
@@ -154,16 +160,16 @@ def handle_send_message(data):
     """Handle incoming encrypted messages."""
     room = data["roomId"]
     message = data["message"]
-    handle_name = user_handles[room][request.sid]
+    handle_name = user_handles[request.sid]["handle"]
 
     json_message = {
         "message": message,
-        "sender": handle_name,
+        "senderHandle": handle_name,
+        "senderId": request.sid,
         "roomId": room,
         "createdAt": datetime.now().isoformat(),
     }
 
-    # TODO: Create session key for the group instead of the user
     for user in chat_rooms[room]["members"]:
         sid = user["sid"]
         encrypted_message = encrypt_json(
@@ -171,6 +177,34 @@ def handle_send_message(data):
             session_keys[sid],
         )
         emit("receiveMessage", encrypted_message, to=user["sid"])
+
+
+@socketio.on("disconnect")
+def handle_disconnect():
+    # Remove user from all rooms they are in
+    if request.sid in user_handles:
+        for room_id in user_handles[request.sid]["rooms"]:
+            if room_id in chat_rooms:
+                members = chat_rooms[room_id]
+                members["members"] = [
+                    u for u in members["members"] if u["sid"] != request.sid
+                ]
+                members["memberCount"] -= 1
+
+                leave_detail = {
+                    "roomId": room_id,
+                    "userId": request.sid,
+                }
+
+                for u in members["members"]:
+                    sid = u["sid"]
+                    encrypted_message = encrypt_json(
+                        leave_detail,
+                        session_keys[sid],
+                    )
+                    emit("someoneLeft", encrypted_message, to=sid)
+        user_handles.pop(request.sid, None)
+    session_keys.pop(request.sid, None)
 
 
 if __name__ == "__main__":

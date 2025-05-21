@@ -111,6 +111,11 @@ export async function decryptJson(
 ): Promise<object> {
   try {
     const combinedData = new Uint8Array(encryptedData); // Convert ArrayBuffer to Uint8Array
+    console.log(
+      'Encrypted Data (base64):',
+      btoa(String.fromCharCode(...combinedData)),
+    );
+
     const iv = combinedData.slice(0, 12); // Extract the IV (12 bytes for AES-GCM)
     const encryptedContent = combinedData.slice(12); // Extract the encrypted data
 

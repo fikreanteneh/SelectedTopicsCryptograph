@@ -9,7 +9,7 @@ import { BrowserRouter, Outlet, Route, Routes } from 'react-router-dom';
 
 const Layout = () => {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-card">
+    <div className="flex items-center justify-center h-screen bg-card">
       {/* <DotPattern
         className={cn(
           "dot-pattern-mask"
