@@ -13,6 +13,7 @@ import {
   ChatError,
   ChatJoinReq,
   ChatJoinRes,
+  LeaveChat,
   MessageReceived,
   SendMessage,
 } from '../types/chat.type';
@@ -81,6 +82,11 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
         // Generate a random session key (32 bytes for AES-256)
         const rawSessionKey = crypto.getRandomValues(new Uint8Array(32));
 
+        console.log(
+          'rawSessionKey (base64):',
+          btoa(String.fromCharCode(...rawSessionKey)),
+        );
+
         // the session key as a CryptoKey
         const sessionKey = await sessionToCryptoKey(rawSessionKey);
 
@@ -110,6 +116,7 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
             roomId: data.roomId,
             roomName: data.roomName,
             handle: data.handle,
+            userId: data.userId,
             messages: [],
             createdAt: data.createdAt,
             memberCount: data.memberCount,
@@ -125,6 +132,7 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
             roomId: data.roomId,
             roomName: data.roomName,
             handle: data.handle,
+            userId: data.userId,
             messages: [],
             createdAt: new Date(data.createdAt),
             memberCount: data.memberCount,
@@ -147,7 +155,8 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
                     messages: [
                       ...chat.messages,
                       {
-                        sender: data.sender,
+                        senderId: data.senderId,
+                        senderHandle: data.senderHandle,
                         message: data.message,
                         createdAt: data.createdAt,
                         seen: false,
@@ -185,11 +194,32 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
           alert(data.message);
         }, sessionKey);
 
+        const someoneLeftHandler = jsonReceiveHandler<LeaveChat>((data) => {
+          //TODO: Toast Notification
+          setMapList((prevChatsMap) => {
+            const chat = prevChatsMap[data.roomId];
+            if (chat) {
+              return {
+                ...prevChatsMap,
+                [data.roomId]: {
+                  ...chat,
+                  members: chat.members.filter(
+                    (member) => member.sid !== data.userId,
+                  ),
+                  memberCount: chat.memberCount - 1,
+                },
+              };
+            }
+            return prevChatsMap;
+          });
+        }, sessionKey);
+
         // Register socket event handlers
         socket.on('chatCreated', chatCreatedHandler);
         socket.on('chatJoined', chatJoinedHandler);
         socket.on('receiveMessage', chatReceivedHandler);
         socket.on('someoneJoined', someoneJoinedHandler);
+        socket.on('someoneLeft', someoneLeftHandler);
         socket.on('error', chatErrorHandler);
       } catch (error) {
         alert(error);
@@ -209,8 +239,13 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
   const createChat = async (createChat: ChatCreateReq) =>
     socket?.emit('create', await encryptJson(createChat, sessionKey!));
 
-  const joinChat = async (joinChat: ChatJoinReq) =>
+  const joinChat = async (joinChat: ChatJoinReq) => {
+    if (joinChat.roomId in chatsMap) {
+      alert('You are already in this chat');
+      return;
+    }
     socket?.emit('join', await encryptJson(joinChat, sessionKey!));
+  };
 
   return socket && sessionKey ? (
     <ChatContext.Provider
