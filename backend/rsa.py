@@ -10,8 +10,8 @@ def generate_large_prime(bits):
             return num
 
 
+# Extended Euclidean Algorithm to find modular inverse
 def modular_inverse(e, totient):
-    # Extended Euclidean Algorithm to find modular inverse
     def egcd(a, b):
         if a == 0:
             return b, 0, 1
@@ -70,5 +70,8 @@ def format_in_pem(keys):
     return pem
 
 
-public, private = generate_rsa_key_pair()
-print(format_in_pem(public))
+if __name__ == "__main__":
+    # Example usage
+    private, public = generate_rsa_key_pair()
+    print(format_in_pem(public))
+    print(format_in_pem(private))

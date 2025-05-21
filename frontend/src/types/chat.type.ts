@@ -14,6 +14,7 @@ export interface ChatCreateRes {
   roomId: string;
   roomName: string;
   handle: string;
+  userId: string;
   createdAt: Date;
   memberCount: number;
   members: ChatMember[];
@@ -28,6 +29,7 @@ export interface ChatJoinRes {
   roomId: string;
   roomName: string;
   handle: string;
+  userId: string;
   createdAt: string;
   memberCount: number;
   members: ChatMember[];
@@ -39,7 +41,8 @@ export type SendMessage = {
 };
 
 export type MessageReceived = {
-  sender: string;
+  senderId: string;
+  senderHandle: string;
   message: string;
   roomId: string;
   createdAt: Date;
@@ -47,7 +50,8 @@ export type MessageReceived = {
 
 //Local Types
 export type Message = {
-  sender: string;
+  senderId: string;
+  senderHandle: string;
   message: string;
   seen: boolean;
   createdAt: Date;
@@ -57,6 +61,7 @@ export type Chat = {
   roomId: string;
   roomName: string;
   handle: string;
+  userId: string;
   messages: Message[];
   memberCount: number;
   members: ChatMember[];
@@ -65,4 +70,9 @@ export type Chat = {
 
 export type ChatError = {
   message: string;
+};
+
+export type LeaveChat = {
+  roomId: string;
+  userId: string;
 };

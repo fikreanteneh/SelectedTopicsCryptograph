@@ -75,26 +75,27 @@ const ChatList = () => {
   ];
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen p-2">
       <div className="flex flex-col h-screen border bg-muted border-muted w-96">
-        <div>
-          <div className="space-y-1">
-            {buttons.map((item) => {
-              return (
-                <div className="flex space-x-[0.5]" key={item.button}>
-                  <Input
-                    placeholder={item.placeholder}
-                    className="flex-[12] h-9"
-                    onChange={item.onChange}
-                    value={item.value}
-                  />
-                  <Button className="flex-[4] h-9" onClick={item.onClick}>
-                    {item.button}
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
+        <div className="space-y-1">
+          {buttons.map((item) => {
+            return (
+              <div
+                className="flex items-center justify-center gap-1"
+                key={item.button}
+              >
+                <Input
+                  placeholder={item.placeholder}
+                  className="flex-[12] h-[8.5] text-foreground"
+                  onChange={item.onChange}
+                  value={item.value}
+                />
+                <Button className="flex-[4] h-9" onClick={item.onClick}>
+                  {item.button}
+                </Button>
+              </div>
+            );
+          })}
         </div>
         <ul className="p-2 mt-5 overflow-y-auto border-r border-muted bg-background">
           {chatsList.map((chatId) => {
@@ -102,53 +103,91 @@ const ChatList = () => {
             const unreadCount = chat.messages.filter(
               (message) => !message.seen,
             ).length;
+            const lastMessage = chat.messages[chat.messages.length - 1];
             return (
               <li
                 key={chat.roomId}
-                className="flex items-center justify-between p-2 border-b cursor-pointer border-muted"
+                className={`
+          flex items-center justify-between gap-2 p-3 border-b border-muted cursor-pointer
+          hover:bg-accent transition-colors group
+        `}
                 onClick={() => navigate(`./${chat.roomId}`)}
               >
-                <span>{chat.roomName}</span>
-                {unreadCount > 0 && (
-                  <span className="px-2 py-1 text-xs bg-red-500 rounded-full text-foreground">
-                    {unreadCount}
-                  </span>
-                )}
+                {/* Left: Avatar & Chat Info */}
+                <div className="flex items-center flex-1 min-w-0 gap-3">
+                  {/* Avatar (first letter of roomName) */}
+                  <div className="flex items-center justify-center flex-shrink-0 w-10 h-10 text-lg font-bold rounded-full bg-primary/20 text-primary">
+                    {chat.roomName[0]?.toUpperCase()}
+                  </div>
+                  {/* Chat Info */}
+                  <div className="min-w-0">
+                    <div className="font-semibold truncate text-foreground">
+                      {chat.roomName}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate max-w-[180px]">
+                      {lastMessage ? (
+                        `${
+                          lastMessage.senderId === chat.userId
+                            ? 'You: '
+                            : lastMessage.senderHandle + ': '
+                        }${lastMessage.message}`
+                      ) : (
+                        <span className="italic text-muted-foreground">
+                          No messages yet
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {/* Right: Time & Unread */}
+                <div className="flex flex-col items-end gap-1 ml-2">
+                  {/* Time of last message */}
+                  {lastMessage && (
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(lastMessage.createdAt).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  )}
+                  {/* Unread badge */}
+                  {unreadCount > 0 && (
+                    <span className="px-2 py-0.5 text-xs bg-primary text-white rounded-full font-semibold">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
               </li>
             );
           })}
         </ul>
       </div>
       {modalOpen && (
-        <div className="flex items-center justify-center h-screen">
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="relative p-6 bg-white rounded-lg shadow-lg w-96">
-              <button
-                className="absolute text-gray-500 top-2 right-2 hover:text-gray-700"
-                onClick={() => {
-                  setModalOpen(false);
-                }}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50">
+          <div className="relative p-6 border rounded-lg shadow-lg w-96 bg-background text-foreground border-border">
+            <button
+              className="absolute text-2xl top-2 right-2 text-muted-foreground hover:text-primary"
+              onClick={() => setModalOpen(false)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <div className="flex flex-col gap-4">
+              <label className="text-lg font-semibold text-center text-primary">
+                Insert your handle for the chat
+              </label>
+              <Input
+                placeholder="Enter your handle"
+                className="border h-9 bg-input border-border text-foreground"
+                onChange={(e) => setHandleInput(e.target.value)}
+                value={handleInput}
+              />
+              <Button
+                className="font-semibold h-9 bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={handleCreateOrJoinChat}
               >
-                &times;
-              </button>
-              <div className="flex flex-col gap-2">
-                <label className="text-lg font-semibold text-center" htmlFor="">
-                  Insert your handle for the chat
-                </label>
-
-                <Input
-                  placeholder="Enter your handle"
-                  className="flex-[12] h-9"
-                  onChange={(e) => setHandleInput(e.target.value)}
-                  value={handleInput}
-                />
-                <Button
-                  className="flex-[4] h-9"
-                  onClick={handleCreateOrJoinChat}
-                >
-                  {currentAction === 'createChat' ? 'Create Chat' : 'Join Chat'}
-                </Button>
-              </div>
+                {currentAction === 'createChat' ? 'Create Chat' : 'Join Chat'}
+              </Button>
             </div>
           </div>
         </div>
