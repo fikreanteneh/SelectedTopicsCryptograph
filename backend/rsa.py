@@ -53,6 +53,26 @@ def generate_rsa_key_pair(bits=2048):
         return private_key, public_key
 
 
+def encrypt_rsa(message, public_key):
+    e, n = public_key
+    # Convert message to integer
+    message_int = int.from_bytes(message.encode("utf-8"), byteorder="big")
+    # Encrypt using RSA formula: c = m^e mod n
+    cipher_int = pow(message_int, e, n)
+    return cipher_int
+
+
+def decrypt_rsa(ciphertext, private_key):
+    d, n = private_key
+    # Decrypt using RSA formula: m = c^d mod n
+    message_int = pow(ciphertext, d, n)
+    # Convert integer back to bytes
+    message_bytes = message_int.to_bytes(
+        (message_int.bit_length() + 7) // 8, byteorder="big"
+    )
+    return message_bytes.decode("utf-8")
+
+
 def format_in_pem(keys):
     e, n = keys
     # Convert modulus and exponent to bytes
