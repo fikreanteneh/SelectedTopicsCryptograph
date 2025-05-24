@@ -10,7 +10,6 @@ This repository is for our Selected Topics course project. The focus of this pro
 | Fikremariam Anteneh | UGR/9301/13   |
 | Betselot Kidane     | UGR/8473/13   |
 | Salahadin Juhar     | UGR/8613/13   |
-| Sara Ayele          | UGR/0948/13   |
 
 ## 1. RSA Key Generation
 
