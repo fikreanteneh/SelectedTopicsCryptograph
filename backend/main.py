@@ -208,7 +208,11 @@ def handle_disconnect():
 
 
 if __name__ == "__main__":
-    socketio.run(app, port=4433)
+    socketio.run(
+        app,
+        port=4433,
+        # ssl_context=("cert.pem", "key.pem"),
+    )
 
 # Generate a self-signed certificate for testing purposes
 # openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes

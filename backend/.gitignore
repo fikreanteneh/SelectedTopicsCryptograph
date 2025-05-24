@@ -175,3 +175,4 @@ cython_debug/
 
 key.pem
 cert.pem
+cert.crt
