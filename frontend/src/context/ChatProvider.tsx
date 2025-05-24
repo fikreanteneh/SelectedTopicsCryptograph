@@ -5,8 +5,8 @@ import {
   sessionToCryptoKey,
 } from '@/lib/cryptography';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
 import toast, { Toaster } from 'react-hot-toast';
+import { io, Socket } from 'socket.io-client';
 import {
   Chat,
   ChatCreateReq,
@@ -145,7 +145,7 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
         // Handle receiving messages
         const chatReceivedHandler = jsonReceiveHandler<MessageReceived>(
           (data) => {
-            if (selectedChat !== data.roomId) {
+            if (selectedChat !== data.roomId && data.senderId !== socket.id) {
               toast(`New message from ${data.senderHandle}`, {
                 icon: '💬',
               });
@@ -202,7 +202,9 @@ export const ChatProvider: React.FC<React.PropsWithChildren> = ({
 
         const someoneLeftHandler = jsonReceiveHandler<LeaveChat>((data) => {
           const chat = chatsMap[data.roomId];
-          const leavingUser = chat?.members.find(member => member.sid === data.userId);
+          const leavingUser = chat?.members.find(
+            (member) => member.sid === data.userId,
+          );
           if (leavingUser) {
             toast(`${leavingUser.handle} left the chat`, {
               icon: '👋',
